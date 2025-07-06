@@ -27,6 +27,13 @@ async def _download_all_versions(package_name, python_versions, download_dir):
     os.makedirs(download_dir, exist_ok=True)
     versions = get_package_versions(package_name)
 
+    # Limit to 5 concurrent version downloads
+    semaphore = asyncio.Semaphore(5)
+
+    async def sem_download(version):
+        async with semaphore:
+            await download_version(version)
+
     async def download_version(version):
         for py_ver in python_versions:
             cmd = [
@@ -42,5 +49,6 @@ async def _download_all_versions(package_name, python_versions, download_dir):
             if ret != 0:
                 print(f"Failed to download {package_name}=={version} with Python{py_ver}")
 
-    tasks = [asyncio.create_task(download_version(v)) for v in versions]
+    # Schedule tasks with concurrency limit
+    tasks = [asyncio.create_task(sem_download(v)) for v in versions]
     await asyncio.gather(*tasks)
