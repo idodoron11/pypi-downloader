@@ -4,6 +4,7 @@ Download and retrieve package wheel files from PyPI.
 import os
 import subprocess
 import requests
+import asyncio
 
 
 def get_package_versions(package_name):
@@ -18,10 +19,15 @@ def get_package_versions(package_name):
 
 
 def download_wheel_files(package_name, python_versions, download_dir="downloads"):
-    """Download specified versions of the package using pip download for each Python interpreter."""
+    """Download wheels concurrently across package versions."""
+    asyncio.run(_download_all_versions(package_name, python_versions, download_dir))
+
+
+async def _download_all_versions(package_name, python_versions, download_dir):
     os.makedirs(download_dir, exist_ok=True)
     versions = get_package_versions(package_name)
-    for version in versions:
+
+    async def download_version(version):
         for py_ver in python_versions:
             cmd = [
                 "pip", "download", f"{package_name}=={version}",
@@ -31,8 +37,10 @@ def download_wheel_files(package_name, python_versions, download_dir="downloads"
                 "-d", download_dir
             ]
             print(f"Downloading {package_name}=={version} with Python{py_ver}...")
-            try:
-                subprocess.run(cmd, check=True)
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to download {package_name}=={version} with Python{py_ver}: {e}")
-                continue
+            proc = await asyncio.create_subprocess_exec(*cmd)
+            ret = await proc.wait()
+            if ret != 0:
+                print(f"Failed to download {package_name}=={version} with Python{py_ver}")
+
+    tasks = [asyncio.create_task(download_version(v)) for v in versions]
+    await asyncio.gather(*tasks)
