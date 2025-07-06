@@ -5,7 +5,7 @@ description = "A tool to download wheel files from PyPI for specified Python ver
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
 # Disable packaging mode: Poetry will only manage dependencies, not install the project
-package-mode = false
+package-mode = true
 
 [tool.poetry.dependencies]
 python = ">=3.8.1,<4.0"
@@ -19,7 +19,7 @@ mypy = "^1.0.0"
 
 [tool.poetry.scripts]
 # Command-line entry point (requires defining a main() in main.py)
-pypi-downloader = "main:main"
+pypi_downloader = "pypi_downloader.cli:main"
 
 [build-system]
 requires = ["poetry-core"]
