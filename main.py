@@ -1,6 +1,7 @@
 import requests
 import os
 import subprocess
+import argparse
 
 def get_package_versions(package_name):
     """Fetch all available versions of a package from PyPI."""
@@ -34,6 +35,11 @@ def download_wheel_files(package_name, python_versions, download_dir="downloads"
 
 # Example usage
 if __name__ == "__main__":
-    package = "requests"  # Replace with your desired package
-    python_versions = ["3.10", "3.11", "3.12", "3.13"]  # Replace with your desired Python versions
-    download_wheel_files(package, python_versions)
+    parser = argparse.ArgumentParser(description="Download package wheels for specific Python versions.")
+    parser.add_argument("package", help="Name of the package to download.")
+    parser.add_argument("-p", "--python-versions", nargs='+', required=True,
+                        help="List of Python versions, e.g. 3.10 3.11.")
+    parser.add_argument("-d", "--download-dir", default="downloads",
+                        help="Directory to save downloaded wheels.")
+    args = parser.parse_args()
+    download_wheel_files(args.package, args.python_versions, args.download_dir)
