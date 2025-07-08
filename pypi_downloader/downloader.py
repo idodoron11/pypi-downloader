@@ -5,6 +5,8 @@ import os
 import subprocess
 import requests
 import asyncio
+from packaging.requirements import Requirement
+from packaging.version import Version
 
 
 def get_package_versions(package_name):
@@ -20,23 +22,33 @@ def get_package_versions(package_name):
 
 def download_wheel_files(packages, python_versions, download_dir="downloads"):
     """Download wheels concurrently across package versions for one or more packages."""
-    # Normalize to list if a single package string is provided
+    # Normalize to list and parse version constraints
     if isinstance(packages, str):
-        package_list = [packages]
-    else:
-        package_list = packages
-    for package_name in package_list:
-        print(f"Starting download for package: {package_name}")
-        asyncio.run(_download_all_versions(package_name, python_versions, download_dir))
+        packages = [packages]
+    # Parse requirement strings into Requirement objects
+    package_specs = [Requirement(p) for p in packages]
+    for req in package_specs:
+        package_name = req.name
+        specifier_set = req.specifier
+        print(f"Starting download for package: {package_name} with constraints: {specifier_set or 'none'}")
+        asyncio.run(_download_all_versions(package_name, python_versions, download_dir, specifier_set))
 
 
-async def _download_all_versions(package_name, python_versions, download_dir):
+async def _download_all_versions(package_name, python_versions, download_dir, specifier_set):
     os.makedirs(download_dir, exist_ok=True)
     try:
         versions = get_package_versions(package_name)
     except Exception as e:
         print(f"Error fetching versions for {package_name}: {e}")
         return
+    # Apply version constraints
+    if len(locals().get('specifier_set', [])):
+        original_count = len(versions)
+        versions = [v for v in versions if Version(v) in specifier_set]
+        print(f"Filtered versions for {package_name}: {len(versions)} of {original_count} match constraints {specifier_set}")
+        if not versions:
+            print(f"No versions match constraints {specifier_set} for package {package_name}")
+            return
 
     # Limit to 5 concurrent version downloads
     semaphore = asyncio.Semaphore(5)
@@ -50,8 +62,6 @@ async def _download_all_versions(package_name, python_versions, download_dir):
             cmd = [
                 "pip", "download", f"{package_name}=={version}",
                 "--python-version", py_ver.replace(".", ""),
-                "--only-binary=:all:",
-                "--no-deps",
                 "-d", download_dir
             ]
             print(f"Downloading {package_name}=={version} with Python{py_ver}...")
