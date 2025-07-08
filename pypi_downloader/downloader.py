@@ -5,7 +5,8 @@ import os
 import subprocess
 import requests
 import asyncio
-from packaging.requirements import Requirement
+import re
+from packaging.requirements import Requirement, InvalidRequirement
 from packaging.version import Version
 
 
@@ -25,8 +26,21 @@ def download_wheel_files(packages, python_versions, download_dir="downloads"):
     # Normalize to list and parse version constraints
     if isinstance(packages, str):
         packages = [packages]
-    # Parse requirement strings into Requirement objects
-    package_specs = [Requirement(p) for p in packages]
+    # Parse requirement strings into Requirement objects, sanitizing local version labels if needed
+    package_specs = []
+    for p in packages:
+        try:
+            req = Requirement(p)
+        except InvalidRequirement:
+            print(f"Warning: could not parse requirement '{p}', stripping local version labels.")
+            # separate name and specifier part
+            m = re.match(r"^([^<>=!~]+)(.*)$", p)
+            name = m.group(1) if m else p
+            spec = m.group(2) if m else ''
+            # remove local labels like +label
+            spec_clean = re.sub(r"(\d+\.\d+\.\d+)\+[^,;]+", r"\1", spec)
+            req = Requirement(f"{name}{spec_clean}")
+        package_specs.append(req)
     for req in package_specs:
         package_name = req.name
         specifier_set = req.specifier
@@ -62,6 +76,8 @@ async def _download_all_versions(package_name, python_versions, download_dir, sp
             cmd = [
                 "pip", "download", f"{package_name}=={version}",
                 "--python-version", py_ver.replace(".", ""),
+                "--only-binary=:all:",
+                "--no-deps",
                 "-d", download_dir
             ]
             print(f"Downloading {package_name}=={version} with Python{py_ver}...")
