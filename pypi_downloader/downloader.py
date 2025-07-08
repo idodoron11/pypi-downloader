@@ -7,7 +7,7 @@ import requests
 import asyncio
 import re
 from packaging.requirements import Requirement, InvalidRequirement
-from packaging.version import Version
+from packaging.version import Version, InvalidVersion
 
 
 def get_package_versions(package_name):
@@ -55,17 +55,26 @@ async def _download_all_versions(package_name, python_versions, download_dir, sp
     except Exception as e:
         print(f"Error fetching versions for {package_name}: {e}")
         return
-    # Apply version constraints
-    if len(locals().get('specifier_set', [])):
+    # Apply version constraints, skipping invalid version strings
+    if specifier_set:
         original_count = len(versions)
-        versions = [v for v in versions if Version(v) in specifier_set]
+        filtered = []
+        for v in versions:
+            try:
+                ver = Version(v)
+            except InvalidVersion:
+                print(f"Skipping invalid version string: {v}")
+                continue
+            if ver in specifier_set:
+                filtered.append(v)
+        versions = filtered
         print(f"Filtered versions for {package_name}: {len(versions)} of {original_count} match constraints {specifier_set}")
         if not versions:
             print(f"No versions match constraints {specifier_set} for package {package_name}")
             return
 
     # Limit to 5 concurrent version downloads
-    semaphore = asyncio.Semaphore(5)
+    semaphore = asyncio.Semaphore(10)
 
     async def sem_download(version):
         async with semaphore:
