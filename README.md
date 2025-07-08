@@ -25,23 +25,22 @@ pip install pypi-downloader
 
 Once installed, use the `pypi_downloader` command:
 ```bash
-pypi_downloader <package> -p <version1> <version2> ... [-d <download_dir>]
+pypi_downloader <package1> [<package2> ...] -p <version1> <version2> ... [-d <download_dir>]
 ```
-
+  
 ### Arguments
-
+  
 - `<package>`: Name of the PyPI package to download.
-- `-p, --python-versions`: One or more Python versions (e.g. `3.10 3.11`).
-- `-d, --download-dir`: Target directory for wheel files (default: `downloads`).
-
+- `<packages>`: One or more PyPI package names to download.
+  
 ### Examples
-
+  
 Download wheels for requests on Python 3.10 and 3.11:
 ```bash
-pypi_downloader requests -p 3.10 3.11
+pypi_downloader requests flask -p 3.10 3.11
 ```
-
+  
 Specify a custom download directory:
 ```bash
-pypi_downloader numpy -p 3.9 3.10 -d wheels_cache
+pypi_downloader numpy pandas -p 3.9 3.10 -d wheels_cache
 ```

@@ -18,14 +18,25 @@ def get_package_versions(package_name):
         raise Exception(f"Failed to fetch package info for {package_name}")
 
 
-def download_wheel_files(package_name, python_versions, download_dir="downloads"):
-    """Download wheels concurrently across package versions."""
-    asyncio.run(_download_all_versions(package_name, python_versions, download_dir))
+def download_wheel_files(packages, python_versions, download_dir="downloads"):
+    """Download wheels concurrently across package versions for one or more packages."""
+    # Normalize to list if a single package string is provided
+    if isinstance(packages, str):
+        package_list = [packages]
+    else:
+        package_list = packages
+    for package_name in package_list:
+        print(f"Starting download for package: {package_name}")
+        asyncio.run(_download_all_versions(package_name, python_versions, download_dir))
 
 
 async def _download_all_versions(package_name, python_versions, download_dir):
     os.makedirs(download_dir, exist_ok=True)
-    versions = get_package_versions(package_name)
+    try:
+        versions = get_package_versions(package_name)
+    except Exception as e:
+        print(f"Error fetching versions for {package_name}: {e}")
+        return
 
     # Limit to 5 concurrent version downloads
     semaphore = asyncio.Semaphore(5)
